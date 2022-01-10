@@ -1,0 +1,247 @@
+﻿Using System
+Using System.Collections
+Using System.Text
+Using System.Diagnostics
+Using ShortId 
+Using ShortId.Configuration 
+Using System.Text.RegularExpressions
+
+BegClass Program
+
+	BegSr Main Shared(*Yes) Access(*Public) Attributes(System.STAThread())
+		DclSrParm args Type(*String) Rank(1)
+
+		DclFld tc Type(CustomerQuery) New(15) 
+        DclFld key Type(ConsoleKeyInfo) 
+        DclFld sw Type(StopWatch) New() 
+
+
+        // Get first page            
+		tc.Query(CustomerQuery.QueryTypeEnum.ByIndexFirstPage) 
+ 		Console.WriteLine('Press any key to continue, or ''q'' to quite..') 
+        key = Console.ReadKey(*True) 
+
+        DoWhile key.Key <> ConsoleKey.Q 
+    		tc.Query(CustomerQuery.QueryTypeEnum.ByIndexFirstPage, tc.LastCMName, tc.LastCMCustNo) 
+    		Console.WriteLine('Press any key to continue, or ''q'' to quite..') 
+            key = Console.ReadKey(*True) 
+        EndDo 
+
+        tc.CloseData()
+	EndSr
+
+EndClass
+
+
+BegClass CustomerQuery
+	DclDB DGDB DBName("*PUBLIC/Cypress")
+
+    DclProp LastCMName Like(CMName) Access(*Public) 
+    DclProp LastCMCustNo Like(CMCustNo) Access(*Public) 
+
+    DclFld MoreRowsToRead Type(*Boolean) 
+
+    DclFld RowsToShow Type(*Integer4) 
+    DclFld UniqueObjectId Type(*Char) Len(10) 
+
+    DclConst SUCCESS Value(0)
+
+    BegEnum QueryTypeEnum Access(*Public) 
+        DclEnumFld ByIndexFirstPage 
+        DclEnumFld ByIndexNextPage 
+        DclEnumFld NameStartsWith    
+    EndEnum 
+
+	DclDiskFile  WebTempFile +
+		Type(*Input) +
+		Org(*Arrival) +
+		File("Examples/CMastNewL2") +
+		DB(DGDB) +
+		ImpOpen(*No) 
+
+	BegConstructor Access(*Public) 
+        DclSrParm RowsToShow Type(*Integer4) 
+
+        *This.RowsToShow = RowsToShow
+		Connect DGDB
+	EndConstructor 
+
+	BegSr CloseData Access(*Public) 
+		Disconnect DGDB 
+	EndSr
+
+	BegSr Query Access(*Public) 
+        DclSrParm QueryType Type(QueryTypeEnum) 
+
+        If QueryType <> QueryTypeEnum.ByIndexFirstPage
+            Throw *New ArgumentException('Single argument Query method must be called with QueryTypeEnum.ByIndexFirstPage') 
+        EndIf 
+
+        Query(QueryType.ByIndexNextPage, '',0)
+    EndSr
+
+	BegSr Query Access(*Public) 
+        DclSrParm QueryType Type(QueryTypeEnum) 
+		DclSrParm LastCMName Like(CMName)
+        DclSrParm LastCMCustNo Like(CMCustNo)
+        
+        DclFld sw Type(StopWatch) New() 
+
+        sw.Start()
+        If QueryDispatch(LastCMName, LastCMCustNo) = SUCCESS
+            ShowPageRows()
+        EndIf 
+        sw.Stop()
+        Console.WriteLine('---> Milliseconds: {0:#,000}', sw.ElapsedMilliseconds)
+    EndSr
+
+    BegFunc QueryDispatch Type(*Integer4) 
+		DclSrParm LastCMName Like(CMName)
+        DclSrParm LastCMCustNo Like(CMCustNo)        
+
+        DclFld Status Type(*Integer4) 
+
+        Status = CreateWorkTable()
+        If Status <> SUCCESS
+            LeaveSr Status 
+        EndIf 
+
+        Status = GetQueryByIndexPage(LastCMName, LastCMCustNo)
+        If Status <> SUCCESS
+            LeaveSr Status 
+        EndIf 
+
+        LeaveSr SUCCESS 
+    EndFunc
+
+    BegFunc GetQueryByIndexPage Type(*Integer4) 
+		DclSrParm LastCMName Like(CMName)
+        DclSrParm LastCMCustNo Like(CMCustNo)
+
+        DclFld SqlBuilder Type(StringBuilder) New()
+
+        *This.LastCMName = LastCMName
+        *This.LastCMCustNo = LastCMCustNo 
+
+        SqlBuilder.AppendLine(' INSERT INTO qtemp/{objectId} ')
+        SqlBuilder.AppendLine(' SELECT * FROM examples/cmastnewl2 ')
+        SqlBuilder.AppendLine(' WHERE concat(trim(cmname),char(cmcustno)) >= ''{lastCMName}'' ')
+        SqlBuilder.AppendLine(' ORDER BY concat(trim(cmname),char(cmcustno)) ')
+        SqlBuilder.AppendLine(' FETCH FIRST {rows} ROWS ONLY ')
+
+        // SQL for 'starts with' query.
+        // SqlBuilder.AppendLine(' WHERE LOWER(cmname) LIKE ''adcom%'' OR concat(LOWER(trim(cmname)),char(cmcustno)) >= ''adcom'' ')
+
+        SqlBuilder.Replace('{objectId}', UniqueObjectId)         
+        If *This.LastCMName = ''
+            SqlBuilder.Replace('{lastCMName}',  '')
+        Else
+            SqlBuilder.Replace('{lastCMName}',  (*This.LastCMName.Trim() + *This.LastCMCustNo.ToString()).Replace("'", "''")) 
+        EndIf 
+        
+        // Read one more row than requested.
+        SqlBuilder.Replace('{rows}', (*This.RowsToShow + 1).ToString()) 
+
+        LeaveSr CallRPGQueryPgm(SqlBuilder.ToString()) 
+    EndFunc 
+
+    BegFunc CreateWorkTable Type(*Integer4) 
+        DclFld SqlBuilder Type(StringBuilder) New()
+
+        *This.UniqueObjectId = GenerateUniqueObjectId() 
+
+        SqlBuilder.AppendLine('CREATE TABLE qtemp/{objectId} LIKE examples/cmastnew')
+        SqlBuilder.Replace('{objectId}', *This.UniqueObjectId) 
+        SqlBuilder.ToString()
+
+        LeaveSr CallRPGQueryPgm(SqlBuilder.ToString()) 
+    EndFunc 
+
+    BegFunc CallRPGQueryPgm Type(*Integer4)  
+        DclSrParm Sql Type(*String) 
+
+        // PageQuery program parm list.
+        DclFld Sql1 Type(*Char) Len(1024) 
+        DclFld Sql2 Type(*Char) Len(1024)
+        DclFld Sql3 Type(*Char) Len(1024)
+        DclFld RowsFetched1 Type(*Integer4) 
+        DclFld RowsFetched2 Type(*Integer4) 
+        DclFld RowsFetched3 Type(*Integer4) 
+        DclFld StatusCode Type(*Integer4) 
+        DclFld ErrorMsg Type(*Char) Len(256)
+        DclFld SqlErrorMsg Type(*Char) Len(24) 
+
+        Sql1 = Sql 
+
+   		Call 'RPZIMMIE/pagequery' DB(DGDB) 
+		DclParm Sql1
+		DclParm Sql2 
+		DclParm Sql3 
+		DclParm RowsFetched1  
+		DclParm RowsFetched2  
+		DclParm RowsFetched3  
+        DclParm StatusCode 
+        DclParm ErrorMsg 
+        DclParm SqlErrorMsg
+
+        If StatusCode = -1
+            Console.WriteLine('Error message: {0}', StatusCode) 
+            Console.WriteLine('SQL error message: {0}', SqlErrorMsg) 
+            LeaveSr -1
+        EndIf 
+
+        LeaveSr 0 
+    EndFunc 
+
+    BegSr ShowPageRows  
+        DclFld i Type(*Integer4) 
+        DclFld TotalRowsRead Type(*Integer4) 
+		
+        WebTempFile.FilePath = String.Format('qtemp/{0}', UniqueObjectId)
+		Open WebTempFile 
+        
+        TotalRowsRead = WebTempFile.RecCount
+        MoreRowsToRead = (TotalRowsRead > *This.RowsToShow) 
+        If MoreRowsToRead
+            Console.WriteLine('More...')            
+        Else
+            Console.WriteLine('Last page...')            
+        EndIf
+
+        Do FromVal(1) ToVal(*This.RowsToShow) Index(i) 
+    		Read WebTempFile 
+            If WebTempFile.IsEof 
+                Leave 
+            EndIf 
+        	Console.WriteLine('{0} - {1}', i, CMName.Trim() + '-' + CMCustNo.ToString()) 
+		EndDo 
+
+        *This.LastCMName = CMName
+        *This.LastCMCustNo = CMCustNo 
+
+		Close WebTempFile 
+
+		Console.WriteLine('-----------------------')
+        Console.WriteLine('{0}', *This.LastCMName.Trim() + *This.LastCMCustNo.ToString())
+		Console.WriteLine('-----------------------')
+	EndSr
+
+
+    BegFunc GenerateUniqueObjectId Type(*Char) Len(10) 
+        DclFld Id Type(*Char) Len(10)
+
+        DclFld Options Type(GenerationOptions) New()
+        Options.Length = 10
+        // ShortId needs at least 50 unique characters. 
+        ShortId.SetCharacters('ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890$#@abcdefghijklmnopqrstuvwxyz')
+
+        Id = ShortId.Generate(Options).ToUpper()
+        // Result cannot contain _, -, start with a digit
+        DoWhile Id.Contains('_') OR Id.Contains('-') OR Regex.IsMatch(Id, "^\d") 
+            Id = ShortId.Generate(Options)
+        EndDo             
+
+        LeaveSr Id
+    EndFunc
+
+EndClass

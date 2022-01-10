@@ -1,0 +1,91 @@
+        Ctl-Opt Option(*srcstmt) Dftactgrp(*No) ActGrp('rpmobile');
+
+        Dcl-Pi *N;
+            Sql Char(1024);
+            RowsFetched Int(10);
+            StatusCode Int(10);
+            ErrorMsg Char(256);
+            SqlError Char(24); 
+        End-Pi;
+
+        Dcl-S RowsReturned Int(10);
+
+        ErrorMsg = '';
+        SqlError = '';
+        StatusCode = 0;
+
+        ConfigureSQL();
+
+        RowsFetched = ExecSql(Sql);
+        If RowsFetched = -1; 
+            StatusCode = -1;
+            SqlError = 'query 1';
+        EndIf; 
+
+        Return;
+
+        Dcl-Proc ConfigureSQL;
+            Dcl-Pi *N Int(10);
+            End-Pi;
+
+            EXEC SQL
+                SET OPTION COMMIT = *NONE;
+
+            EXEC SQL
+                SET OPTION NAMING = *SYS;
+
+            return 0;            
+        End-Proc;
+
+        Dcl-Proc ExecSql;
+            Dcl-Pi *N Int(10);
+                Sql Char(1024); 
+            End-Pi;
+
+            Dcl-S RowsFetched Int(10);
+            RowsFetched = 0; 
+
+            If Sql = *Blanks;
+                Return 0;
+            EndIf;                
+
+            EXEC SQL
+                EXECUTE IMMEDIATE :Sql;
+            if (SQLCOD <> 0);
+                ErrorMsg = 'query SQLCOD = ' + %char(SQLCOD);
+                Return -1; 
+            endif;                
+
+            EXEC SQL
+                GET DIAGNOSTICS :RowsFetched = ROW_COUNT;
+
+            Return RowsFetched;
+        End-Proc;
+
+        //
+        // RPG program to get a delimited list of text
+        // and values for an autocomplete feature.
+        //
+        // Version .92
+        //
+        // Copyright 2018 by ASNA. All rights reserved.
+        // This program is free to use by ASNA customers
+        // currently on an ASNA product maintenance plan. You
+        // may use this program in your commercial applications
+        // but please leave this notice intact.
+
+        // THIS SOFTWARE IS PROVIDED AS_IS AND IN NO EVENT SHALL
+        // ASNA BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+        // SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+        // INCLUDING LOST PROFITS, ARISING OUT OF THE USE
+        // OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+        // ASNA HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+        // ASNA SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING,
+        // BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+        // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+        // THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY,
+        // PROVIDED HEREUNDER IS PROVIDED "AS IS." ASNA HAS NO
+        // OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES,
+        // ENHANCEMENTS, OR MODIFICATIONS.
+        //
