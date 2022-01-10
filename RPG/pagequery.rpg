@@ -63,8 +63,8 @@
         End-Proc;
 
         //
-        // RPG program to get a delimited list of text
-        // and values for an autocomplete feature.
+        // RPG program to perform RPG's EXECUTE IMMEDIATE 
+        // with SQL. 
         //
         // Version .92
         //
