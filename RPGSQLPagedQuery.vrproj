@@ -40,6 +40,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomerModel.vr">
+      <SubType>
+      </SubType>
+    </Compile>
     <Compile Include="Program.vr" />
     <Compile Include="Properties\AssemblyInfo.vr" />
   </ItemGroup>

@@ -1,0 +1,53 @@
+﻿Using System
+Using System.Text
+Using System.Data
+Using System.Reflection
+
+
+BegClass CustomerModel Access(*Public)
+
+    // This class was created with the CreateClassDefinition utility.
+    // Do not change it by hand--regenerate it with the CreateClassDefinition utility.
+    // Property names must be lowercase to correspond to AddGetInstanceFromDataRowMethod's
+    // lowercase property name look up.
+
+    DclProp cmcustno Type(System.Decimal) Access(*Public)
+    DclProp cmname Type(System.String) Access(*Public)
+    DclProp cmaddr1 Type(System.String) Access(*Public)
+    DclProp cmcity Type(System.String) Access(*Public)
+    DclProp cmstate Type(System.String) Access(*Public)
+    DclProp cmcntry Type(System.String) Access(*Public)
+    DclProp cmpostcode Type(System.String) Access(*Public)
+    DclProp cmactive Type(System.String) Access(*Public)
+    DclProp cmfax Type(System.Decimal) Access(*Public)
+    DclProp cmphone Type(System.String) Access(*Public)
+
+    BegFunc GetInstanceFromDataRow Type(CustomerModel) Access(*Public) Shared(*Yes)
+        DclSrParm dt Type(DataTable)
+
+        DclFld ColumnName Type(*String)
+        DclFld obj Type(CustomerModel) New()
+        DclFld dr Type(DataRow)
+        DclFld i Type(*Integer4)
+        DclFld pi Type(PropertyInfo)
+        DclFld Value Type(*Object)
+
+        DclFld dc Type(DataColumn)
+
+        dr = dt.Rows[0]
+
+        For Index(i = 0) To(dt.Columns.Count - 1)
+            dc = dt.Columns[i]
+            ColumnName = dt.Columns[i].ColumnName
+            Value = dr.ItemArray[i]
+
+            pi = obj.GetType().GetProperty(ColumnName.ToLower())
+            If pi <> *Nothing
+                pi.SetValue(obj, Convert.ChangeType(Value, pi.PropertyType), *Nothing)
+            EndIf
+        EndFor
+
+        LeaveSr obj
+    EndFunc
+
+EndClass

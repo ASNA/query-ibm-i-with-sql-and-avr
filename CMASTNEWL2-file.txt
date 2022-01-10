@@ -1,0 +1,29 @@
+﻿----------------------------------------------------------------------------
+File definition: Examples/CMastNewL2
+----------------------------------------------------------------------------
+
+Database Name.: *PUBLIC/DG NET Local
+Library.......: Examples
+File..........: CMastNewL2
+File alias....: CustomerByName
+Format........: RCMMastL2
+Type..........: Simple logical
+Base file.....: Examples/CMastNew
+Description...: Cust master by Name
+Record length.: 151
+Key length....: 45
+Key field(s)..: CMName, CMCustNo
+
+Field name           Data type   Length  Decimals  Description
+----------------------------------------------------------------------------
+ CMCustNo            Packed          9        0
+ CMName              Char           40
+ CMAddr1             Char           35
+ CMCity              Char           30
+ CMState             Char            2
+ CMCntry             Char            2
+ CMPostCode          Char           10
+ CMActive            Char            1
+ CMFax               Packed         10        0
+ CMPhone             Char           20
+----------------------------------------------------------------------------
